@@ -1,0 +1,2 @@
+﻿  Project1.cpp
+D:\Code\C++\Project1\Project1.cpp(5): error C4700: 使用了未初始化的局部变量“n”

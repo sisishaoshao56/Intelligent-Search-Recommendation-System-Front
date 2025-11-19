@@ -1,0 +1,12 @@
+﻿  Project5.cpp
+D:\Code\C++\Project5\Project5.cpp(46,17): warning C4244: “return”: 从“__int64”转换到“int”，可能丢失数据
+D:\Code\C++\Project5\Project5.cpp(49,10): warning C4244: “初始化”: 从“__int64”转换到“int”，可能丢失数据
+D:\Code\C++\Project5\Project5.cpp(61,10): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+D:\Code\C++\Project5\Project5.cpp(61,22): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+D:\Code\C++\Project5\Project5.cpp(65,12): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+D:\Code\C++\Project5\Project5.cpp(68,12): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+D:\Code\C++\Project5\Project5.cpp(68,24): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+D:\Code\C++\Project5\Project5.cpp(68,36): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+D:\Code\C++\Project5\Project5.cpp(73,12): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+D:\Code\C++\Project5\Project5.cpp(73,24): warning C4244: “=”: 从“__int64”转换到“int”，可能丢失数据
+  Project5.vcxproj -> D:\Code\C++\Project5\x64\Debug\Project5.exe
