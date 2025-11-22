@@ -10,5 +10,7 @@ export interface Item {
 
 export const fetchHot = (limit = 10) => http.get<Item[]>('/recommend/hot', { params: { limit } })
 
-export const fetchEmbeddingRec = (userId: number, limit = 5) =>
-  http.get<Item[]>('/recommend/embedding', { params: { userId, limit } })
+export const fetchEmbeddingRec = (limit = 5, userId?: number) =>
+  http.get<Item[]>('/recommend/embedding', {
+    params: userId ? { userId, limit } : { limit },
+  })

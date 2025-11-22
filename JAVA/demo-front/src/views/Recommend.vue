@@ -4,17 +4,30 @@ import { onMounted, ref } from 'vue'
 import { fetchEmbeddingRec, fetchHot, type Item } from '../api/recommend'
 
 const LIMIT = 8
-const userId = ref<number>(1)
 const hotList = ref<Item[]>([])
 const recList = ref<Item[]>([])
 const loading = ref(false)
+const playerUrl = ref('')
+const playingTitle = ref('')
 
 const normalizeTags = (item: Item) => item.tagsJson ?? '-'
+
+const startPlay = (item: Item) => {
+  const token = localStorage.getItem('token')
+  const suffix = token ? `?token=${encodeURIComponent(token)}` : ''
+  playerUrl.value = `/api/items/${item.id}/play${suffix}`
+  playingTitle.value = item.title ?? item.path ?? `Item #${item.id}`
+}
+
+const closePlayer = () => {
+  playerUrl.value = ''
+  playingTitle.value = ''
+}
 
 const loadData = async () => {
   loading.value = true
   try {
-    const [hotRes, recRes] = await Promise.all([fetchHot(LIMIT), fetchEmbeddingRec(userId.value, LIMIT)])
+    const [hotRes, recRes] = await Promise.all([fetchHot(LIMIT), fetchEmbeddingRec(LIMIT)])
     hotList.value = Array.isArray(hotRes.data) ? hotRes.data.slice(0, LIMIT) : []
     recList.value = Array.isArray(recRes.data) ? recRes.data.slice(0, LIMIT) : []
   } catch (err) {
@@ -38,9 +51,11 @@ onMounted(loadData)
         根据用户行为Embedding召回相似项目，结合实时热榜，帮助你快速发现值得关注的内容。
       </p>
     </div>
-    <button class="refresh" :disabled="loading" @click="loadData">
-      {{ loading ? '刷新中...' : '刷新推荐' }}
-    </button>
+    <div class="controls">
+      <button class="refresh" :disabled="loading" @click="loadData">
+        {{ loading ? '刷新中...' : '刷新推荐' }}
+      </button>
+    </div>
   </section>
 
   <section class="block">
@@ -51,9 +66,15 @@ onMounted(loadData)
       </div>
     </div>
     <div class="grid">
-      <article v-for="(item, idx) in recList" :key="item.id ?? idx" class="card">
+      <article
+        v-for="(item, idx) in recList"
+        :key="item.id ?? idx"
+        class="card"
+        @click="startPlay(item)"
+      >
         <div class="card-title">{{ item.title ?? item.path ?? `Item #${idx + 1}` }}</div>
         <div class="card-tags">{{ normalizeTags(item) }}</div>
+        <div class="play-hint">点击播放</div>
       </article>
       <div v-if="!loading && recList.length === 0" class="empty">暂无推荐，试试刷新或登录后再来~</div>
       <template v-if="loading">
@@ -70,16 +91,32 @@ onMounted(loadData)
       </div>
     </div>
     <div class="grid">
-      <article v-for="(hot, idx) in hotList" :key="hot.id ?? idx" class="card">
+      <article
+        v-for="(hot, idx) in hotList"
+        :key="hot.id ?? idx"
+        class="card"
+        @click="startPlay(hot)"
+      >
         <div class="card-title">{{ hot.title ?? hot.path ?? `Item #${idx + 1}` }}</div>
         <div class="card-tags">{{ normalizeTags(hot) }}</div>
+        <div class="play-hint">点击播放</div>
       </article>
       <div v-if="!loading && hotList.length === 0" class="empty">热榜为空</div>
       <template v-if="loading">
         <div v-for="n in LIMIT" :key="'hot-skeleton-' + n" class="skeleton"></div>
       </template>
     </div>
-  </section>
+
+  <div v-if="playerUrl" class="player-overlay" @click.self="closePlayer">
+    <div class="player-card">
+      <header>
+        <div class="title">{{ playingTitle }}</div>
+        <button class="close" @click="closePlayer">×</button>
+      </header>
+      <video :src="playerUrl" controls autoplay />
+    </div>
+  </div>
+</section>
 </template>
 
 <style scoped>
@@ -101,6 +138,23 @@ onMounted(loadData)
 .description {
   max-width: 520px;
   color: rgba(255, 255, 255, 0.85);
+}
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.user-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.user-input input {
+  width: 120px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #cbd5f5;
 }
 .refresh {
   border: none;
@@ -153,6 +207,7 @@ onMounted(loadData)
   background: #fff;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
 }
 .card:hover {
   transform: translateY(-4px);
@@ -170,11 +225,61 @@ onMounted(loadData)
   color: #64748b;
   word-break: break-all;
 }
+.play-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #2563eb;
+}
 .empty {
   grid-column: 1 / -1;
   color: #94a3b8;
   padding: 20px 0;
   text-align: center;
+}
+.player-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 16px;
+}
+.player-card {
+  width: min(960px, 100%);
+  background: #0f172a;
+  color: #fff;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+.player-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+.player-card .title {
+  font-weight: 600;
+  font-size: 15px;
+}
+.player-card .close {
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+}
+.player-card video {
+  width: 100%;
+  max-height: 70vh;
+  border-radius: 10px;
+  background: #000;
 }
 .skeleton {
   height: 68px;
