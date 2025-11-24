@@ -9,8 +9,38 @@ const recList = ref<Item[]>([])
 const loading = ref(false)
 const playerUrl = ref('')
 const playingTitle = ref('')
+const gradients = [
+  'linear-gradient(135deg, #4f46e5, #7c3aed)',
+  'linear-gradient(135deg, #2563eb, #22c55e)',
+  'linear-gradient(135deg, #ec4899, #8b5cf6)',
+  'linear-gradient(135deg, #06b6d4, #0ea5e9)',
+  'linear-gradient(135deg, #f59e0b, #ef4444)',
+]
 
-const normalizeTags = (item: Item) => item.tagsJson ?? '-'
+const normalizeTags = (item: Item) => {
+  if (!item.tagsJson) return []
+  return item.tagsJson
+    .split(/[,，;；\s]+/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+}
+
+const chipColor = (idx: number) => {
+  const palette = ['#eef2ff', '#ecfeff', '#fff7ed', '#f3e8ff', '#fef2f2']
+  const text = ['#4338ca', '#0ea5e9', '#c2410c', '#7e22ce', '#b91c1c']
+  return { bg: palette[idx % palette.length], color: text[idx % text.length] }
+}
+
+const thumbStyle = (item: Item, idx: number) => {
+  if (item.id) {
+    return {
+      backgroundImage: `url(/api/items/${item.id}/thumb)`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }
+  }
+  return { backgroundImage: gradients[idx % gradients.length] }
+}
 
 const startPlay = (item: Item) => {
   const token = localStorage.getItem('token')
@@ -48,14 +78,16 @@ onMounted(loadData)
       <p class="eyebrow">向量驱动 · 个性推荐</p>
       <h1>为你量身定制的内容灵感</h1>
       <p class="description">
-        根据用户行为Embedding召回相似项目，结合实时热榜，帮助你快速发现值得关注的内容。
+        根据用户行为 Embedding 召回相似项目，结合实时热榜，帮助你快速发现值得关注的内容。
       </p>
+      <div class="hero-actions">
+        <button class="refresh primary" :disabled="loading" @click="loadData">
+          {{ loading ? '刷新中...' : '刷新推荐' }}
+        </button>
+        <button class="refresh ghost" @click="playerUrl = ''">收起播放器</button>
+      </div>
     </div>
-    <div class="controls">
-      <button class="refresh" :disabled="loading" @click="loadData">
-        {{ loading ? '刷新中...' : '刷新推荐' }}
-      </button>
-    </div>
+    <div class="hero-badge">AI Picks</div>
   </section>
 
   <section class="block">
@@ -72,11 +104,28 @@ onMounted(loadData)
         class="card"
         @click="startPlay(item)"
       >
-        <div class="card-title">{{ item.title ?? item.path ?? `Item #${idx + 1}` }}</div>
-        <div class="card-tags">{{ normalizeTags(item) }}</div>
-        <div class="play-hint">点击播放</div>
+        <div class="thumb" :style="thumbStyle(item, idx)">
+          <span class="play-icon">▶</span>
+        </div>
+        <div class="card-meta">
+          <div class="card-title">{{ item.title ?? item.path ?? `Item #${idx + 1}` }}</div>
+          <div class="chip-row">
+            <span
+              v-for="(tag, tIdx) in normalizeTags(item).slice(0, 3)"
+              :key="tIdx"
+              class="chip"
+              :style="{ backgroundColor: chipColor(tIdx).bg, color: chipColor(tIdx).color }"
+            >
+              {{ tag }}
+            </span>
+          </div>
+          <div class="play-hint">点击播放</div>
+        </div>
       </article>
-      <div v-if="!loading && recList.length === 0" class="empty">暂无推荐，试试刷新或登录后再来~</div>
+      <div v-if="!loading && recList.length === 0" class="empty">
+        <div class="empty-illu">🪁</div>
+        <p>暂无推荐，去播放一个视频获取个性推荐吧~</p>
+      </div>
       <template v-if="loading">
         <div v-for="n in LIMIT" :key="'rec-skeleton-' + n" class="skeleton"></div>
       </template>
@@ -94,29 +143,47 @@ onMounted(loadData)
       <article
         v-for="(hot, idx) in hotList"
         :key="hot.id ?? idx"
-        class="card"
+        class="card hot"
         @click="startPlay(hot)"
       >
-        <div class="card-title">{{ hot.title ?? hot.path ?? `Item #${idx + 1}` }}</div>
-        <div class="card-tags">{{ normalizeTags(hot) }}</div>
-        <div class="play-hint">点击播放</div>
+        <div class="rank">#{{ idx + 1 }}</div>
+        <div class="thumb" :style="thumbStyle(hot, idx + 2)">
+          <span class="play-icon">▶</span>
+        </div>
+        <div class="card-meta">
+          <div class="card-title">{{ hot.title ?? hot.path ?? `Item #${idx + 1}` }}</div>
+          <div class="chip-row">
+            <span
+              v-for="(tag, tIdx) in normalizeTags(hot).slice(0, 3)"
+              :key="tIdx"
+              class="chip"
+              :style="{ backgroundColor: chipColor(tIdx).bg, color: chipColor(tIdx).color }"
+            >
+              {{ tag }}
+            </span>
+          </div>
+          <div class="play-hint">点击播放</div>
+        </div>
       </article>
-      <div v-if="!loading && hotList.length === 0" class="empty">热榜为空</div>
+      <div v-if="!loading && hotList.length === 0" class="empty">
+        <div class="empty-illu">🔥</div>
+        <p>热榜为空，去播放视频触发热度吧~</p>
+      </div>
       <template v-if="loading">
         <div v-for="n in LIMIT" :key="'hot-skeleton-' + n" class="skeleton"></div>
       </template>
     </div>
 
-  <div v-if="playerUrl" class="player-overlay" @click.self="closePlayer">
-    <div class="player-card">
-      <header>
-        <div class="title">{{ playingTitle }}</div>
-        <button class="close" @click="closePlayer">×</button>
-      </header>
-      <video :src="playerUrl" controls autoplay />
+    <div v-if="playerUrl" class="player-overlay" @click.self="closePlayer">
+      <div class="player-card">
+        <header>
+          <div class="title">{{ playingTitle }}</div>
+          <button class="close" @click="closePlayer">×</button>
+        </header>
+        <video :src="playerUrl" controls autoplay />
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 </template>
 
 <style scoped>
@@ -131,6 +198,19 @@ onMounted(loadData)
   color: #fff;
   margin-bottom: 32px;
 }
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  align-items: center;
+}
+.hero-badge {
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
 .hero h1 {
   margin: 8px 0;
   font-size: 28px;
@@ -144,27 +224,25 @@ onMounted(loadData)
   gap: 12px;
   align-items: center;
 }
-.user-input {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
+.primary {
+  background: #fff;
+  color: #2563eb;
 }
-.user-input input {
-  width: 120px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #cbd5f5;
+.ghost {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 .refresh {
   border: none;
   border-radius: 12px;
   padding: 12px 30px;
-  background: #fff;
-  color: #2563eb;
+  background: #f8fafc;
+  color: #0f172a;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 .refresh:disabled {
   opacity: 0.7;
@@ -203,38 +281,95 @@ onMounted(loadData)
 .card {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 14px;
+  padding: 10px;
   background: #fff;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 12px;
+  align-items: center;
 }
 .card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 }
+.card.hot {
+  position: relative;
+}
+.rank {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #1f2937;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+.thumb {
+  position: relative;
+  width: 100%;
+  padding-top: 60%;
+  border-radius: 12px;
+  background-size: 200% 200%;
+  background-position: center;
+  overflow: hidden;
+}
+.play-icon {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f2937;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 13px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+.card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .card-title {
   font-weight: 600;
-  margin-bottom: 6px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.card-tags {
-  font-size: 13px;
-  color: #64748b;
-  word-break: break-all;
+.chip-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
 }
 .play-hint {
-  margin-top: 10px;
   font-size: 12px;
   color: #2563eb;
 }
 .empty {
   grid-column: 1 / -1;
   color: #94a3b8;
-  padding: 20px 0;
+  padding: 28px 0;
   text-align: center;
+  background: #f8fafc;
+  border: 1px dashed #e2e8f0;
+  border-radius: 14px;
+}
+.empty-illu {
+  font-size: 28px;
+  margin-bottom: 6px;
 }
 .player-overlay {
   position: fixed;
